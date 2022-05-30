@@ -175,6 +175,7 @@ public class Controller : MonoBehaviour
         }
 
     }
+    Dictionary<Tile, List<int>> adyacentesRobberConDistancia = new Dictionary<Tile, List<int>>();
 
     public void RobberTurn()
     {
@@ -230,27 +231,91 @@ public class Controller : MonoBehaviour
 
     public void FindSelectableTiles(bool cop)
     {
-                 
-        int indexcurrentTile;        
+        int indexcurrentTile;
 
-        if (cop==true)
+        if (cop == true)
             indexcurrentTile = cops[clickedCop].GetComponent<CopMove>().currentTile;
         else
             indexcurrentTile = robber.GetComponent<RobberMove>().currentTile;
 
         //La ponemos rosa porque acabamos de hacer un reset
         tiles[indexcurrentTile].current = true;
+        tiles[indexcurrentTile].visited = true;
 
         //Cola para el BFS
         Queue<Tile> nodes = new Queue<Tile>();
 
-        //TODO: Implementar BFS. Los nodos seleccionables los ponemos como selectable=true
-        //Tendrás que cambiar este código por el BFS
-        for(int i = 0; i < Constants.NumTiles; i++)
+        //TODO:Implementar BFS. Los nodos seleccionables los ponemos como selectable=true
+
+        // indices ocupados por los otros cops
+        List<int> indicesCops = new List<int>();
+        foreach (GameObject copTmp in cops)
         {
-            tiles[i].selectable = true;
+            indicesCops.Add(copTmp.GetComponent<CopMove>().currentTile);
+
+            //Guardamos en un GameObject todos los cops y con GetComponent y currentFile,
+            //podemos saber en que casilla estan en todo momentos los cops, almcenadolo en indiciesCops
         }
 
+
+        foreach (int indice in tiles[indexcurrentTile].adjacency)
+        {
+
+            tiles[indice].parent = tiles[indexcurrentTile];
+            nodes.Enqueue(tiles[indice]);//añadir a la cola de nodos
+
+
+        }
+
+        while (nodes.Count > 0)
+        {
+            Tile tmp = nodes.Dequeue();
+            if (!tmp.visited)
+            {
+                // evitamos que no recorra la casilla del policia
+                if (indicesCops.Contains(tmp.numTile))
+                {
+                    tmp.visited = true;
+                    tmp.distance = tmp.parent.distance + 1;
+                }
+                else
+                {
+                    tmp.visited = true;
+                    tmp.distance = tmp.parent.distance + 1;
+
+                    foreach (int indice in tmp.adjacency)
+                    {
+
+                        // no puede ir a donde estan ocupadas por ningun cop, esto le incluye a ella misma
+                        if (!tiles[indice].visited)
+                        {
+                            tiles[indice].parent = tmp;
+                            nodes.Enqueue(tiles[indice]);
+                        }
+
+                    }
+                }
+            }
+        }
+
+        foreach (Tile t in tiles)
+        {
+
+            if (cop && adyacentesRobberConDistancia.Count > 0 && adyacentesRobberConDistancia.ContainsKey(t)) //calculamos la distancia de entre
+                                                                                                              //las casillas y el policia
+
+            {
+                adyacentesRobberConDistancia[t].Add(t.distance);
+
+            }
+            //buscamos casillas que tengan una distancia 
+            // menor a dos casillas.
+            // no puede ir a donde estan ocupadas por ningun cop, esto le incluye a ella misma
+            if (t.distance <= 2 && !indicesCops.Contains(t.numTile))
+            {
+                t.selectable = true;                                                                    //las convertimos a selectable
+            }
+        }
 
     }
     
